@@ -1,0 +1,108 @@
+*{
+    margin: 0;
+    padding: 0;
+}
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0px 30px;
+}
+/* .navbar-brand {
+    
+} */
+.navbar-brand img{
+    width: 150px;
+    
+   
+}
+.navbar-links{
+    height: 30px;
+}
+.links{
+    margin-right: 20px;
+    font-size: 16px;
+    color:rgb(43, 41, 41);
+    font-weight: bold;
+    text-decoration: none;
+    transition: all .8s;
+
+}
+.links:hover {
+    color: rgb(245,179,56);
+    border-bottom: 3px solid rgb(245, 179, 56);
+
+}
+
+
+.active {
+    color: rgb(245,179,56);
+    border-bottom: 3px solid rgb(245, 179, 56);
+}
+
+
+.banner img{
+    width: 100%;
+    height: 70vh;
+    border-radius: 10px;
+}
+/* Card area styles */
+.card-area{
+    display: flex;
+    justify-content: space-around;
+    padding: 150px 0px;
+}
+
+.card{
+    border: 1px solid slateblue;
+    max-width: 27%;
+    padding: 60px 10px ;
+    border-radius: 50%;
+}
+.card h2, 
+.card p {
+    text-align: center; 
+}
+.card p{
+    color: rgb(101, 94, 101);
+}
+.card h2{
+    color:rgb(43, 0, 255);
+}
+
+/* Dialog area style */
+.dialog{
+    background-image: linear-gradient(to top left, #ffcc00, #cA8300) ;
+    display: flex;
+    justify-content: space-evenly;
+    padding: 100px;
+}
+.dialog-text{
+    width: 550px;
+}
+
+.dialog-text h2{
+    font-size: 30px;
+    margin-bottom : 15px;
+}
+
+.dialog-text p{
+    font-size:17px;
+    text-align: justify;
+}
+
+
+
+.dialog-img{
+    width: 450px;
+}
+.gdialog-img img{
+    width: 100%;
+}
+footer{
+    background-image: linear-gradient(to top right, #ffcc00, #cA8300) ;
+    text-align: center;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: xx-large;
+    padding: 20px;
+}
