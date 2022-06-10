@@ -1,31 +1,100 @@
 const express = require('express');
 const app = express();
-const port = 7000;
+const port= 7000;
 const logger = require('morgan');
 const path = require('path');
-const mongoose = require ('mongoose')
-const User = require ('./models/User.js');
+const flash = require('connect-flash');
+const mongoose = require('mongoose');
+const User = require('./models/User.js')
 const bcrypt = require('bcryptjs')
-
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const {globalVariables} = require('./config/globalConfig');
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy
+const { isLoggedIn } = require('./config/authorization')
 
 // DB connection
 
 mongoose.connect("mongodb://localhost/MySite")
-.then(response => console.log('Database Connected Successfully '))
-.catch(error => console.log(`Database connection: ${error}`))
+.then(response => console.log('Database Connected Successfully'))
+.catch(error => console.log(`Database connection error: ${error}`))
+
+
+// Cookie configuration
+app.use(cookieParser());
+
+
+// Session configuration
+
+app.use(session({
+    secret: 'HFDSFFGjgggvdffgghhh988',
+    resave: true,
+    saveUninitialized: true,
+    cookie: {
+        maxAge: Date.now() + 3600000
+    },
+    store: MongoStore.create({
+      mongoUrl: 'mongodb://localhost/MySite',
+      ttl: 365 * 24 * 60 * 60 // = 14 days. Default
+    })
+  }));
+
+//   passport configuration
+
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new LocalStrategy({usernameField: 'email', passReqToCallback: true}, 
+async(req, email, password, done) => {
+    await User.findOne({email})
+    .then((user)=> {
+        if(!user){
+            return done(null, false, req.flash('eror-message', 'User not found. Please register and try again'))
+        }
+
+        bcrypt.compare(password, user.password, (err, passwordMatch) => {
+            if (err){
+                return err;
+            }
+
+            if (!passwordMatch) return done(null, false, req.flash('error-message','Incorrect Passport'))
+
+            return done(null,user, req.flash('success-message', 'Login Successful'));
+        })
+
+        console.log(user)
+    })
+
+}));
+
+passport.serializeUser(function(user, done){
+    done(null, user.id);
+});
+passport.deserializeUser(function(id, done){
+    User.findById(id, function(err, user){
+        done(err, user)
+    })
+})
+
+//   flash setup
+  app.use(flash());
+
+//   global variable set up
+  app.use(globalVariables);
 
 
 // morgan setup
 app.use(logger('dev'));
 
+// set up View Engine to use EJS
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json())
+app.use(express.json());
 app.use(express.urlencoded({extended : true}))
 
-//creating the route for homepage
 app.get('/', (req, res)=> {
     const allPosts = [
         {
@@ -58,56 +127,76 @@ app.get('/', (req, res)=> {
     res.render('home', {allPosts});
 });
 
-app.get('/login', (req, res)=> {
+
+app.get('/login', (req,res) => {
     res.render('login');
 });
 
-app.get('/register', (req, res)=> {
+// post route for login
+
+app.post('/user/login', passport.authenticate('local', {
+    failureRedirect: '/login',
+    successRedirect: '/',
+    session: true
+}))
+
+
+
+app.get('/register', (req,res) => {
     res.render('register');
+});
 
-}); 
+app.post('/user/register', async (req,res) => {
+    let{username,
+    password, 
+    email, 
+    summary, 
+    image
+} = req.body;
 
-app.post('/User/register', async (req, res)=> {
-    let {userName, password, confirmPassword, email, summary, image} = req.body;
-     if(password >= 6) {
-        console.log("password must be greater than six")
+const userExist = await User.findOne({ email });
+if (userExist) {
+    req.flash("error-message","User already exists");
+   return res.redirect("back");
+}
 
-     }else if(password != confirmPassword) {
-        console.log("password not the same")
-      
-      }
-      
-    let userExist = await User.findOne({email})
-    if(userExist) {
-        console.log('User already exist')
-    }else{
+const salt= await  bcrypt.genSalt(10);
+const hashedPassword= await bcrypt.hash(password, salt);
 
-        const salt = await bcrypt.genSaltSync(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        let newUser = new User({
-            userName,
-            password: hashedPassword,
-            email,
-            summary,
-            image
-        })
-        newUser = await newUser.save();
-        if(!newUser){
-            console.log('something wenr wrong')
-        }else{
-            console.log(`Registration successful ${newUser}`)
-        }
+const newUser = new User({
+    username,
+    password: hashedPassword,
+    email,
+    summary,
+    image
+});
     
-    }
-  
+ await newUser.save(); 
+ 
+ req.flash("success-message", "Registration Succesful");
+ res.redirect("/login");
 });
 
-app.get('/new-post', (req, res)=> {
-    res.render('newPost');
+app.get('/newpost' , (req, res) => {
+    res.render('newPost')
+});
 
+app.get('/viewpost' , (req, res) => {
+    res.render('viewPost')
+});
 
+app.get('/user/profile', isLoggedIn, (req, res) => {
+    res.render('profile');
 });
 
 
-app.listen(port, () => console.log(`server running on ${port}`));
+app.get('/user/logout',(req, res) => {
+    req.logout(function(err) {
+        if (err) return next (err)
+            req.flash("success-message", "User logged out successfully")
+            res.redirect('/login')
+    });
+    
+})
+
+app.listen(port, ()=> console.log(`Server running on ${port}`));
